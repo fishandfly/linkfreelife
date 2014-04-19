@@ -1,6 +1,6 @@
 <?php
 //drupal基础配置代码，必须存在
-define('DRUPAL_ROOT', getcwd()."/../c");
+define('DRUPAL_ROOT', getcwd()."/..");
 
 include_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
