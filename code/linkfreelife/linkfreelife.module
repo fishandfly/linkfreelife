@@ -1,4 +1,6 @@
 <?php
+require_once 'linkfreelife_wxadapter.inc';
+
 /**
  * Implements hook_FORM_ID_alter
  * 
@@ -33,4 +35,8 @@ function linkfreelife_user_login(&$edit, $account) {
 		rules_invoke_component('rules_r001',$edit['values']['openid']);
 	}
 }
+
+
+
+
 ?>
