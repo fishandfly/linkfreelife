@@ -18,8 +18,9 @@ function linkfreelife_selectproject($openid){
 	return $return_list;
 }
 
+
 /**
- * 设定缺省项目或项目地点
+ * 保存用户通过微信发送的对象（图片、文件、位置信息等）
  *
  * @param unknown $openid：用户的微信openid
  * @param unknown $wxtype: wxitem的类型
@@ -28,8 +29,16 @@ function linkfreelife_selectproject($openid){
  * @return array 保存后的可用链接（查看、编辑、加备注）
  */
 function linkfreelife_savewxitem($openid,$wxtype,$wxvalue){
-	echo "Hello SaveWxItem";
+	if(empty($wxtype)) $wxtype = WXITEM_TYPE_PHOTO;
+	
+	if($wxtype==WXITEM_TYPE_PHOTO){	//图片
+		echo "call rules";
+		list($tr06id) = rules_invoke_component('rules_r005',$openid,$wxvalue);
+		echo $tr06id;
+		return $tr06id;
+	}
 }
+
 
 /**
  * 用微信客户端进行用户登录
