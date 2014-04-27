@@ -5,8 +5,20 @@ define('DRUPAL_ROOT', getcwd()."/..");
 include_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
-demo_linkfreelife_selectproject_singleplace();	//设定地点
+
+
+//$filename = linkfreelife_grabimage('http://www.baidu.com/img/bdlogo.gif');
+
+//demo_linkfreelife_selectproject_singleplace();	//设定地点
 demo_linkfreelife_savewxitem();	//保存图片
+
+/**
+ * 用于演示将远程图片保存到本地
+ */
+function  demo_grabimage(){
+	$filename = linkfreelife_grabimage('http://www.baidu.com/img/bdlogo.gif');
+	echo $filename;
+}
 
 /**
  * 用于演示保存上传的文件
@@ -14,7 +26,10 @@ demo_linkfreelife_savewxitem();	//保存图片
 function demo_linkfreelife_savewxitem(){
 	linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
 	
-	$tr06id= linkfreelife_savewxitem('222',1,'http://www.baidu.com/img/bdlogo.gif');	//第2个参数=1，代表保存的是图片
+	//$tr06id= linkfreelife_savewxitem('222',1,'http://www.baidu.com/img/bdlogo.gif');	//第2个参数=1，代表保存的是图片
+	
+	//oQybmtztKj91iUeKClEhzL20xh0w|||http://mmbiz.qpic.cn/mmbiz/XdZLDbLdXaxpbVbibwdb2GM0bjyJrPtzib1icGLwqiaVzFUlo41PtFQeBymXv3eJY6d2rtRbEasEzico0zCGb1W8kiaA/0
+	$tr06id= linkfreelife_savewxitem('oQybmtztKj91iUeKClEhzL20xh0w',1,'http://mmbiz.qpic.cn/mmbiz/XdZLDbLdXaxpbVbibwdb2GM0bjyJrPtzib1icGLwqiaVzFUlo41PtFQeBymXv3eJY6d2rtRbEasEzico0zCGb1W8kiaA/0');	//第2个参数=1，代表保存的是图片
 	
 	echo "finished";
 }

@@ -2,6 +2,37 @@
 require_once 'linkfreelife_wxadapter.inc';
 
 /**
+ * Implements hook_menu().
+ */
+function linkfreelife_menu() {
+	$items['setprojectplace'] = array(
+			'page callback' => 'linkfreelife_setprojectplace_x',
+			'page arguments' => array(1,2),
+			'access arguments' => array('access content'),
+			'type' => MENU_CALLBACK,
+	);
+	
+	return $items;
+}
+
+/**
+ * 设置缺省项目地点
+ *
+ * @param unknown $pid 项目地点的nid
+ */
+function linkfreelife_setprojectplace_x(){
+	$pid = arg(1);
+	$openid =arg(2);
+	
+	rules_invoke_component('rules_r006',$pid,$openid);
+	
+	echo "<h1>Set Project OK</h1>";
+	//echo "hello".$pid.",".$openid;
+	//echo arg(1).",".arg(2).",".arg(0);
+	//drupal_set_message("I got the pid:".$pid);
+}
+
+/**
  * Implements hook_FORM_ID_alter
  * 
  * 登录form修改，用于增加openid
@@ -36,7 +67,32 @@ function linkfreelife_user_login(&$edit, $account) {
 	}
 }
 
-
-
-
+/**
+ * 读取图片到本地
+ * 
+ * @param unknown $url
+ * @return boolean|string
+ */
+function linkfreelife_grabimage($url) {
+	if($url=="") return false;
+	
+	$filepath =DRUPAL_ROOT.'/sites/default/files/wx/';
+	$filename=$filepath.strrchr($url,"/");
+	
+ 	if(!is_dir($filepath)){
+ 		mkdir($filepath,0777, true);
+ 	}
+	
+	ob_start();
+	readfile($url);
+	$img = ob_get_contents();
+	ob_end_clean();
+	
+	$size = strlen($img);
+	$fp2=@fopen($filename, "a");
+	fwrite($fp2,$img);
+	fclose($fp2);
+	
+	return $filename;
+}
 ?>
