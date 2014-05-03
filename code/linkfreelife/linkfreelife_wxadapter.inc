@@ -2,6 +2,22 @@
 define('WXITEM_TYPE_PHOTO','1');	//微信条目的类型-图片
 
 /**
+ * 取得项目公告
+ * 
+ * @param unknown $openid
+ */
+function linkfreelife_getprojectnews($openid){
+	list($tr09list) = rules_invoke_component('rules_r008',$openid);
+	drupal_set_message(debug($tr09_list));
+	$return_list;
+	foreach ($tr09list as $tr09){
+		$return_list[] = array('title'=>$tr09->title, 'nid'=>$tr09->nid);
+	}
+	
+	return $return_list;
+}
+
+/**
  * 设定缺省项目或项目地点
  * 
  * @param unknown $openid：用户的微信openid

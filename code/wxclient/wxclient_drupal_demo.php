@@ -6,11 +6,24 @@ include_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
 
+demo_getprojectnews();
 
 //$filename = linkfreelife_grabimage('http://www.baidu.com/img/bdlogo.gif');
 
 //demo_linkfreelife_selectproject_singleplace();	//设定地点
-demo_linkfreelife_savewxitem();	//保存图片
+//demo_linkfreelife_savewxitem();	//保存图片
+
+function demo_getprojectnews(){
+	linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
+	
+	$newslist= linkfreelife_getprojectnews("oQybmtztKj91iUeKClEhzL20xh0w");
+	
+	foreach ($newslist as $news){
+		echo "Title=".$news['title'].",nid=".$news['nid']."<br>";
+	}
+	
+	echo "finished";
+}
 
 /**
  * 用于演示将远程图片保存到本地
