@@ -2,7 +2,12 @@
 /**
   * wechat php test
   */
+//drupal基础配置代码，必须存在
+define('DRUPAL_ROOT', getcwd()."/..");
 
+include_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+ 
 //define your token
 define("TOKEN", "weixin");
 
@@ -29,50 +34,100 @@ class wechatCallbackapiTest
 		$postStr = $GLOBALS["HTTP_RAW_POST_DATA"];
 
       	//extract post data
-		if (!empty($postStr)){	
-                
+		if (!empty($postStr)){  
+				//获取微信端发送来的内容。     
               	$postObj = simplexml_load_string($postStr, 'SimpleXMLElement', LIBXML_NOCDATA);
-                $fromUsername = $postObj->FromUserName;
-                $toUsername = $postObj->ToUserName;
-                $keyword = trim($postObj->Content);
-                $fromType = $postObj->MsgType;
-                $picUrl = $postObj->PicUrl;
+                $fromUsername = $postObj->FromUserName;//发送人OpenId
+                $toUsername = $postObj->ToUserName;//接收人OpenId
+                $fromType = $postObj->MsgType;//消息类型
                 $time = time();
-                $textTpl = "<xml>
-							<ToUserName><![CDATA[%s]]></ToUserName>
-							<FromUserName><![CDATA[%s]]></FromUserName>
-							<CreateTime>%s</CreateTime>
-							<MsgType><![CDATA[%s]]></MsgType>
-							<Content><![CDATA[%s]]></Content>
-							<FuncFlag>0</FuncFlag>
-							</xml>";             
-				if(!empty( $keyword ))
-                {
-                	$msgType = "text";
-                	$contentStr = "欢迎Hello，您好You90，欢迎光临!!";
-                	$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time, $msgType,$contentStr);
-                	echo $resultStr;
-                }else if($fromType=="image"){
-                	$msgType = "text";
-                	$dateNow = strtotime(date('Y-m-d H:i:s'));
-                	$fileName = $fromUsername.date('YmdHis').".jpg";
-                	$f = new SaeFetchurl();
-                	$res = $f -> fetch($picUrl);
-                	if($f->errno()==0){
-						$s = new SaeStorage();
-						$s->write('weixincoures',$fileName,$res);
-                	//$image = file_get_contents($picUrl);
-                	//file_put_contents($fromUsername.$dateNow.".jpg", $image);
-                		$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time, $msgType, "success~");
+                if($fromType=="event"){
+                	//获取发送的动作类型，根据发送的动作类型，确定返回消息的类型和内容
+                	$fromEvent = $postObj->Event;
+                	//如果是添加关注
+                	if($fromEvent=="subscribe"){
+                		//获取关注之后的返回消息内容
+						$joinTpl = $this->GetSubscribe($fromUsername);
+                		$resultStr = sprintf($joinTpl, $fromUsername, $toUsername, $time);
+                		echo $resultStr;
+                	}else if($fromEvent=="CLICK"){   //如果是点击事件
+                		//获取点击事件的编码
+                		$fromEventKey = $postObj->EventKey;
+                		//如果点击事件是“连接用户”
+                		if($fromEventKey=="LoginIn"){
+                			//校验当前用户是否已经绑定系统
+                			$checkLogin = $this->SelectIsLogin();
+                			//如果已经绑定系统，则提示已经绑定
+	                		if($checkLogin=="1"){
+	                			$textTpl = $this->GetTextResTpl("因已存在链接用户的信息，请联系管理员，取消之前的链接，然后再次进行用户链接的工作。");
+	                			$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time);
+	                			echo $resultStr;
+	                		}else{
+		                		
+
+	                		}
+                		}else if($fromEventKey=="SetPorject"){//如果是选择项目
+
+                		}else if($fromEventKey=="Affiche"){//如果是获取公告
+                			//登录后台
+                			linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
+                			//获取当前wx用户，可以获取哪些公告
+                			$newslist= linkfreelife_getprojectnews($fromUsername);
+                			//获取公告返回集合
+							$AfficheTpl = $this->GetAfficheTpl($newslist);
+							$resultStr = sprintf($AfficheTpl, $fromUsername, $toUsername, $time);
+							echo $resultStr;
+                		}else if($fromEventKey=="ParticipateDebate"){//如果是参与讨论
+                			$textTpl = $this->GetTextResTpl("参与讨论啊");
+                			$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time);
+                			echo $resultStr;
+                		}
                 	}
-                	echo $resultStr;
-                }else{
-                	echo "Input something...";
-                }
-        }else {
-        	echo "";
-        	exit;
-        }
+                }else{//判断，如果微信客户端是给公众账号发送消息。     
+                	$keyword = trim($postObj->Content);
+          			//如果是键盘输入文字
+					if(!empty( $keyword ))
+	                {
+	                	$textTpl = $this->GetTextResTpl("欢迎关注力度生活！");
+	                	$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time);
+	                	echo $resultStr;
+	                }else if($fromType=="image"){
+	                	//通过drupal，读取“service001”,获取人员绑定信息
+	                	$result = views_get_view_result("service001");
+	                	//校验当前用户是否已经绑定系统
+	                	$checkLogin = $this->SelectIsLogin($result,$fromUsername);
+	                	
+	                	//如果账号尚未绑定系统
+	                	if($checkLogin==""){
+	                		//获取返回信息是登录时的集合
+	                		$joinTpl = $this->GetLogin($fromUsername);
+	                		//获取Tpl~登录。登录之后正常就可以选择项目
+		                	$resultStr = sprintf($joinTpl, $fromUsername, $toUsername, $time);
+		                	echo $resultStr;
+	                	}else{//如果已登录，则保存图片 
+	                		$picUrl = $postObj->PicUrl;
+		                	//登录后台
+                			linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
+                			//调用后台保存图片方法
+							$resPicId= linkfreelife_savewxitem($fromUsername."",1,$picUrl."");	//第2个参数=1，代表保存的是图片
+							$picTpl = $this->GetSaveimg($picUrl,$resPicId);
+	                		$resultStr = sprintf($picTpl, $fromUsername, $toUsername, $time);         		
+		                	echo $resultStr;
+	                	}
+		                	
+	                }else if($fromType=="video"){
+	                	$msgType = "text";
+	                	$contentStr = "video";//$mediaId;
+	                	$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time, $msgType,$contentStr);
+	                	echo $resultStr;
+	                }else{
+	                	echo "Input something...";
+	                }
+	        	}
+	        }else {
+	        	echo "";
+	        	exit;
+	        }
     }
 		
 	private function checkSignature()
@@ -92,6 +147,199 @@ class wechatCallbackapiTest
 		}else{
 			return false;
 		}
+	}
+	
+	//获取用户关注时，返回的内容集合
+	private function GetSubscribe($fromUsername){
+		//返回内容集合（新闻格式）
+    	$joinTpl = "<xml>
+					<ToUserName><![CDATA[%s]]></ToUserName>
+					<FromUserName><![CDATA[%s]]></FromUserName>
+					<CreateTime>%s</CreateTime>
+					<MsgType><![CDATA[news]]></MsgType>
+					<ArticleCount>3</ArticleCount>
+               					<Articles>
+	               					<item>
+               							<Title>欢迎关注力度生活!</Title>
+               							<Description>欢迎关注力度生活</Description>
+               							<PicUrl><![CDATA[http://wx.linkfree-china.com/wxclient/u34.png]]></PicUrl>
+               							<Url><![CDATA[http://wx.linkfree-china.com/html/welcome.html]]></Url>
+	               					</item>
+               						<item>
+               							<Title>点击进入登陆界面</Title>
+               							<Description>点击进入登陆界面</Description>
+               							<PicUrl><![CDATA[http://wx.linkfree-china.com/wxclient/u38.png]]></PicUrl>
+               							<Url><![CDATA[http://wx.linkfree-china.com/user&openid=".$fromUsername."]]></Url>
+               						</item>
+               						<item>
+               							<Title>查看系统使用指南</Title>
+               							<Description>查看系统使用指南</Description>
+               							<PicUrl><![CDATA[http://wx.linkfree-china.com/wxclient/u42.png]]></PicUrl>
+               							<Url><![CDATA[http://wx.linkfree-china.com/html/help.html]]></Url>
+               						</item>
+               					</Artilces>
+								<FuncFlag>0</FuncFlag>
+								</xml>";  
+               			return $joinTpl;
+	}
+	
+	//获取用户关注时，返回的内容集合
+	private function GetLogin($fromUsername){
+	//返回内容集合（新闻格式）
+    	$joinTpl = "<xml>
+					<ToUserName><![CDATA[%s]]></ToUserName>
+					<FromUserName><![CDATA[%s]]></FromUserName>
+					<CreateTime>%s</CreateTime>
+					<MsgType><![CDATA[news]]></MsgType>
+					<ArticleCount>1</ArticleCount>
+               					<Articles>
+               						<item>
+               							<Title>点击进入登陆界面</Title>
+               							<Description>点击进入登陆界面</Description>
+               							<PicUrl><![CDATA[http://wx.linkfree-china.com/wxclient/u38.png]]></PicUrl>
+               							<Url><![CDATA[http://wx.linkfree-china.com/user&openid=".$fromUsername."]]></Url>
+               						</item>
+               					</Artilces>
+								<FuncFlag>0</FuncFlag>
+								</xml>";  
+               			return $joinTpl;
+	}
+	
+	//保存图片成功时，返回的内容集合
+	private function GetSaveimg($aPicUrl,$aResPicId){
+		//返回内容集合（新闻格式）
+		$picTpl = "<xml>
+					<ToUserName><![CDATA[%s]]></ToUserName>
+					<FromUserName><![CDATA[%s]]></FromUserName>
+					<CreateTime>%s</CreateTime>
+					<MsgType><![CDATA[news]]></MsgType>
+					<ArticleCount>1</ArticleCount>
+               					<Articles>
+	               					<item>
+               							<Title>图片保存成功！</Title>
+               							<Description>如需讨论，请点击参与。</Description>
+               							<PicUrl><![CDATA[".$aPicUrl."]]></PicUrl>
+               							<Url><![CDATA[http://wx.linkfree-china.com/node/".$aResPicId."]]></Url>
+	               					</item>
+               					</Artilces>
+								<FuncFlag>0</FuncFlag>
+								</xml>";
+		return $picTpl;
+	}
+	
+	private function GetSetProject(){
+	
+	}
+	
+	//获取用户是否已经绑定Linkfree，如未绑定返回“”，如已绑定返回“1”
+	private function SelectIsLogin($result,$fromUsername){
+		$checkLogin = "";
+		//通过循环将查询结果做输出，nid、用户id、微信openid。如果发送人OpenId和绑定中的数据有相同的，说明此人已经绑定。
+		foreach($result as $record){
+			$openId = $record->field_field_f01002[0]['raw']['value'];
+			if($fromUsername==$openId){
+				$checkLogin = "1";
+				break;
+			}
+		}
+		return $checkLogin;
+	}
+	
+	//获取项目公告返回结果集合
+	private function GetAfficheTpl($newslist){
+		$listCount = count($newslist);
+		if($listCount<6){
+			$returnTpl = "<xml>
+								<ToUserName><![CDATA[%s]]></ToUserName>
+								<FromUserName><![CDATA[%s]]></FromUserName>
+								<CreateTime>%s</CreateTime>
+								<MsgType><![CDATA[news]]></MsgType>
+								<ArticleCount>".$listCount."</ArticleCount>
+               					<Articles>
+								        ";
+			foreach ($newslist as $news){
+				$returnTpl = $returnTpl."<item>
+               							<Title>".$news['title']."</Title>
+               							<Description>".$news['title']."</Description>
+               							<Url><![CDATA[http://wx.linkfree-china.com/node/".$news['nid']."]]></Url>
+	               					</item>
+		               					";
+			}
+			$returnTpl = $returnTpl."</Artilces>
+									<FuncFlag>0</FuncFlag>
+									</xml>";
+			return  $returnTpl;
+		}else{
+			$returnTpl = "<xml>
+								<ToUserName><![CDATA[%s]]></ToUserName>
+								<FromUserName><![CDATA[%s]]></FromUserName>
+								<CreateTime>%s</CreateTime>
+								<MsgType><![CDATA[news]]></MsgType>
+								<ArticleCount>".$listCount."</ArticleCount>
+               					<Articles>
+								        ";
+			for ($i=0;$i<5;$i++){
+				$news = $newslist[$i];
+				$returnTpl = $returnTpl."<item>
+               							<Title>".$news['title']."</Title>
+               							<Description>".$news['title']."</Description>
+               							<Url><![CDATA[http://wx.linkfree-china.com/node/".$news['nid']."]]></Url>
+	               					</item>
+		               					";
+			}
+			$returnTpl = $returnTpl."</Artilces>
+									<FuncFlag>0</FuncFlag>
+									</xml>";
+			return  $returnTpl;
+		}
+		 
+	}
+	
+	
+	//获取返回文本内容
+	private function GetTextResTpl($aText){
+		$textTpl = "<xml>
+					<ToUserName><![CDATA[%s]]></ToUserName>
+					<FromUserName><![CDATA[%s]]></FromUserName>
+					<CreateTime>%s</CreateTime>
+					<MsgType><![CDATA[text]]></MsgType>
+					<Content><![CDATA[".$aText."]]></Content>
+					<FuncFlag>0</FuncFlag>
+					</xml>";
+		return $textTpl;
+	}
+	
+	//获取新闻格式返回内容，$aList新闻内容集合，$aCount,显示数量
+	private function GetNewsResTpl($aList,$aCount){
+	
+		if($aCount==NULL || $aCount == 0){
+			$showCount = count($aList);
+		}else{
+			$showCount = $aCount;
+		}
+		
+		$newsTpl = "<xml>
+					<ToUserName><![CDATA[%s]]></ToUserName>
+					<FromUserName><![CDATA[%s]]></FromUserName>
+					<CreateTime>%s</CreateTime>
+					<MsgType><![CDATA[news]]></MsgType>
+					<ArticleCount>".$showCount."</ArticleCount>
+					<Artilces>
+					";
+		//循环集合，编写返回的xml内容
+		foreach ($aList as $Obj){
+			$ObjTpl = $ObjTpl."<item>
+		               							<Title><![CDATA[".$Obj['Title']."]]></Title>
+		               							<Description><![CDATA[".$Obj['Description']."]]></Description>
+               									<PicUrl><![CDATA[".$Obj['PicUrl']."]]></PicUrl>
+               									<Url><![CDATA[".$Obj['Url']."]]></Url>
+			               					</item>
+				               					";
+		}
+		$placeTpl = $placeTpl."</Artilces>
+											<FuncFlag>0</FuncFlag>
+											</xml>";
+		return $newsTpl;
 	}
 }
 
