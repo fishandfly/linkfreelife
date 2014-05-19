@@ -1,4 +1,5 @@
 <?php
+use wxclient;
 /**
   * wechat php test
   */
@@ -51,36 +52,53 @@ class wechatCallbackapiTest
                 		$resultStr = sprintf($joinTpl, $fromUsername, $toUsername, $time);
                 		echo $resultStr;
                 	}else if($fromEvent=="CLICK"){   //如果是点击事件
-                		//获取点击事件的编码
-                		$fromEventKey = $postObj->EventKey;
-                		//如果点击事件是“连接用户”
-                		if($fromEventKey=="LoginIn"){
-                			//校验当前用户是否已经绑定系统
-                			$checkLogin = $this->SelectIsLogin();
-                			//如果已经绑定系统，则提示已经绑定
-	                		if($checkLogin=="1"){
-	                			$textTpl = $this->GetTextResTpl("因已存在链接用户的信息，请联系管理员，取消之前的链接，然后再次进行用户链接的工作。");
+                		
+                		//通过drupal，读取“service001”,获取人员绑定信息
+                		$result = views_get_view_result("service001");
+                		//校验当前用户是否已经绑定系统
+                		$checkLogin = $this->SelectIsLogin($result,$fromUsername);
+                		
+                		//如果账号尚未绑定系统
+                		if($checkLogin==""){
+                			//获取返回信息是登录时的集合
+                			$joinTpl = $this->GetLogin($fromUsername);
+                			 
+                			//获取Tpl~登录。登录之后正常就可以选择项目
+                			$resultStr = sprintf($joinTpl, $fromUsername, $toUsername, $time);
+                			echo $resultStr;
+                		}else{
+                			
+	                		//获取点击事件的编码
+	                		$fromEventKey = $postObj->EventKey;
+	                		//如果点击事件是“连接用户”
+	                		if($fromEventKey=="LoginIn"){
+	                			
+	                		}else if($fromEventKey=="SetPorject"){//如果是选择项目
+	                			linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
+	                			$placelist = linkfreelife_selectproject($fromUsername);
+	                			$placeTpl = $this->GetProjectTpl($placelist,$fromUsername);
+	                			$resultStr = sprintf($placeTpl, $fromUsername, $toUsername, $time);
+	                			echo $resultStr;
+	                		}else if($fromEventKey=="Affiche"){//如果是获取公告           			
+	                			//登录后台
+	                			linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
+	                			//获取当前wx用户，可以获取哪些公告
+	                			$newslist= linkfreelife_getprojectnews($fromUsername);
+	                			//获取公告返回集合
+								$AfficheTpl = $this->GetAfficheTpl($newslist);
+								$resultStr = sprintf($AfficheTpl, $fromUsername, $toUsername, $time);
+								echo $resultStr;
+	                		}else if($fromEventKey=="ParticipateDebate"){//如果是参与讨论
+	                			$textTpl = $this->GetTextResTpl("参与讨论啊");
 	                			$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time);
 	                			echo $resultStr;
-	                		}else{
-		                		
-
+	                		}else if($fromEventKey=="ProjectInfo"){
+	                			linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
+	                			$info = linkfreelife_selectProjectInfo($fromUsername);
+	                			$textTpl = $this->GetTextResTpl($info);
+	                			$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time);
+	                			echo $resultStr;
 	                		}
-                		}else if($fromEventKey=="SetPorject"){//如果是选择项目
-
-                		}else if($fromEventKey=="Affiche"){//如果是获取公告
-                			//登录后台
-                			linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
-                			//获取当前wx用户，可以获取哪些公告
-                			$newslist= linkfreelife_getprojectnews($fromUsername);
-                			//获取公告返回集合
-							$AfficheTpl = $this->GetAfficheTpl($newslist);
-							$resultStr = sprintf($AfficheTpl, $fromUsername, $toUsername, $time);
-							echo $resultStr;
-                		}else if($fromEventKey=="ParticipateDebate"){//如果是参与讨论
-                			$textTpl = $this->GetTextResTpl("参与讨论啊");
-                			$resultStr = sprintf($textTpl, $fromUsername, $toUsername, $time);
-                			echo $resultStr;
                 		}
                 	}
                 }else{//判断，如果微信客户端是给公众账号发送消息。     
@@ -101,6 +119,7 @@ class wechatCallbackapiTest
 	                	if($checkLogin==""){
 	                		//获取返回信息是登录时的集合
 	                		$joinTpl = $this->GetLogin($fromUsername);
+	                		
 	                		//获取Tpl~登录。登录之后正常就可以选择项目
 		                	$resultStr = sprintf($joinTpl, $fromUsername, $toUsername, $time);
 		                	echo $resultStr;
@@ -108,8 +127,10 @@ class wechatCallbackapiTest
 	                		$picUrl = $postObj->PicUrl;
 		                	//登录后台
                 			linkfreelife_client_user_login('wxclient','LinkfreeLifeWXClient123!@#');
+                			
                 			//调用后台保存图片方法
 							$resPicId= linkfreelife_savewxitem($fromUsername."",1,$picUrl."");	//第2个参数=1，代表保存的是图片
+							//返回消息给前台
 							$picTpl = $this->GetSaveimg($picUrl,$resPicId);
 	                		$resultStr = sprintf($picTpl, $fromUsername, $toUsername, $time);         		
 		                	echo $resultStr;
@@ -257,10 +278,13 @@ class wechatCallbackapiTest
 								<ArticleCount>".$listCount."</ArticleCount>
                					<Articles>
 								        ";
+			$a = 0;
 			foreach ($newslist as $news){
+				$a++;
 				$returnTpl = $returnTpl."<item>
                							<Title>".$news['title']."</Title>
                							<Description>".$news['title']."</Description>
+               							<PicUrl><![CDATA[http://wx.linkfree-china.com/wxclient/images/".$a.".png]]></PicUrl>
                							<Url><![CDATA[http://wx.linkfree-china.com/node/".$news['nid']."]]></Url>
 	               					</item>
 		               					";
@@ -275,7 +299,7 @@ class wechatCallbackapiTest
 								<FromUserName><![CDATA[%s]]></FromUserName>
 								<CreateTime>%s</CreateTime>
 								<MsgType><![CDATA[news]]></MsgType>
-								<ArticleCount>".$listCount."</ArticleCount>
+								<ArticleCount>6</ArticleCount>
                					<Articles>
 								        ";
 			for ($i=0;$i<5;$i++){
@@ -283,11 +307,18 @@ class wechatCallbackapiTest
 				$returnTpl = $returnTpl."<item>
                							<Title>".$news['title']."</Title>
                							<Description>".$news['title']."</Description>
+               							<PicUrl><![CDATA[http://wx.linkfree-china.com/wxclient/images/".($i+1).".png]]></PicUrl>
                							<Url><![CDATA[http://wx.linkfree-china.com/node/".$news['nid']."]]></Url>
 	               					</item>
 		               					";
 			}
-			$returnTpl = $returnTpl."</Artilces>
+			
+			$returnTpl = $returnTpl."<item>
+               							<Title>点击此处查看更多公告</Title>
+               							<Description>more...</Description>
+               							<Url><![CDATA[http://wx.linkfree-china.com/service017]]></Url>
+	               					</item>
+               						</Artilces>
 									<FuncFlag>0</FuncFlag>
 									</xml>";
 			return  $returnTpl;
@@ -295,6 +326,92 @@ class wechatCallbackapiTest
 		 
 	}
 	
+	//获取项目集合
+	private function GetProjectTpl($aPlacelist,$aFromUsername){
+		$msgType = "text";
+		$listCount = count($aPlacelist);
+		if($listCount==0){
+			$textTpl = "<xml>
+							<ToUserName><![CDATA[%s]]></ToUserName>
+							<FromUserName><![CDATA[%s]]></FromUserName>
+							<CreateTime>%s</CreateTime>
+							<MsgType><![CDATA[text]]></MsgType>
+							<Content><![CDATA[尚未给您设定项目。]]></Content>
+							<FuncFlag>0</FuncFlag>
+							</xml>";
+			return $textTpl;
+		}else if($listCount==1){
+			$place = $aPlacelist[0];
+			$contentStr = "项目设定完成。\nTitle=".$place['title']."\nnid=".$place['nid'];
+			$textTpl = "<xml>
+							<ToUserName><![CDATA[%s]]></ToUserName>
+							<FromUserName><![CDATA[%s]]></FromUserName>
+							<CreateTime>%s</CreateTime>
+							<MsgType><![CDATA[text]]></MsgType>
+							<Content><![CDATA[".$contentStr."]]></Content>
+							<FuncFlag>0</FuncFlag>
+							</xml>";
+			return $textTpl;
+		}else if($listCount>1 && $listCount<=5){
+			$showCount = $listCount+1;
+			$placeTpl = "<xml>
+								<ToUserName><![CDATA[%s]]></ToUserName>
+								<FromUserName><![CDATA[%s]]></FromUserName>
+								<CreateTime>%s</CreateTime>
+								<MsgType><![CDATA[news]]></MsgType>
+								<ArticleCount>".$showCount."</ArticleCount>
+               					<Articles>
+										<item>
+	               							<Title><![CDATA[请选择您要匹配的项目]]></Title>
+	               							<Description><![CDATA[项目列表]]></Description>
+		               					</item>
+								        ";
+			foreach ($aPlacelist as $place){
+				$placeTpl = $placeTpl."<item>
+	               							<Title>".$place['title']."</Title>
+	               							<Description>".$place['title']."</Description>
+	               							<Url><![CDATA[http://wx.linkfree-china.com/setprojectplace/".$place['nid']."/".$aFromUsername."]]></Url>
+		               					</item>
+			               					";
+			}
+			$placeTpl = $placeTpl."</Artilces>
+											<FuncFlag>0</FuncFlag>
+											</xml>";
+			return $placeTpl;
+		}else if($listCount>5){
+			$placeTpl = "<xml>
+								<ToUserName><![CDATA[%s]]></ToUserName>
+								<FromUserName><![CDATA[%s]]></FromUserName>
+								<CreateTime>%s</CreateTime>
+								<MsgType><![CDATA[news]]></MsgType>
+								<ArticleCount>6</ArticleCount>
+               					<Articles>
+										<item>
+	               							<Title><![CDATA[请选择您要匹配的项目]]></Title>
+	               							<Description><![CDATA[项目列表]]></Description>
+		               					</item>
+								        ";
+			for ($i=0;$i<4;$i++){
+				$place = $aPlacelist[$i];
+				$placeTpl = $placeTpl."<item>
+               							<Title>".$place['title']."</Title>
+               							<Description>".$place['title']."</Description>
+               							<Url><![CDATA[http://wx.linkfree-china.com/setprojectplace/".$place['nid']."/".$aFromUsername."]]></Url>
+	               					</item>
+		               					";
+			}
+		
+			$placeTpl = $placeTpl."<item>
+               							<Title><![CDATA[更多选择请点击]]></Title>
+               							<Description><![CDATA[more...]]></Description>
+               							<Url><![CDATA[http://wx.linkfree-china.com/user&openid=".$aFromUsername."]]></Url>
+	               					</item>
+									</Artilces>
+									<FuncFlag>0</FuncFlag>
+									</xml>";
+			return $placeTpl;
+		}
+	}
 	
 	//获取返回文本内容
 	private function GetTextResTpl($aText){
