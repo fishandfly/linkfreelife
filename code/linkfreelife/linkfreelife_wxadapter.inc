@@ -69,4 +69,17 @@ function linkfreelife_client_user_login($username,$password){
 		user_login_finalize($arr);
 	}
 }
+
+/**
+ * 获取项目信息
+ * 
+ * @param unknown $openid：用户的微信openid
+ * @return 
+ */
+function linkfreelife_selectProjectInfo($openid){	
+	echo "call rules";
+	list($returnStr) = rules_invoke_component('rules_r010',$openid);
+	echo $returnStr;
+	return $returnStr;
+}
 ?>
